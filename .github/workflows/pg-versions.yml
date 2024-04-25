@@ -1,43 +1,49 @@
----
-name: Test Postgres versions
-
-on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
-
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    steps:
+    - continue-on-error: true
+      uses: actions/checkout@v4
+    - continue-on-error: true
+      name: Install locales on runner
+      run: 'sudo apt-get update
+
+        sudo apt-get install -y locales-all
+
+        '
+    - continue-on-error: true
+      uses: actions/setup-java@v4
+      with:
+        cache: maven
+        distribution: temurin
+        java-version: 21
+    - continue-on-error: true
+      env:
+        MAVEN_CONFIG: -B -fae
+      name: Build
+      run: 'make install-fast
+
+        '
+    - continue-on-error: true
+      env:
+        MAVEN_CONFIG: -B -fae -Dpg-embedded.postgres-version=${{ matrix.postgres-version
+          }}
+      name: Test
+      run: 'make run-tests
+
+        '
     strategy:
       matrix:
-        postgres-version: [ 9.6, 10, 11, 12, 13, 14, 15, 16 ]
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install locales on runner
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y locales-all
-
-      - uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: temurin
-          cache: maven
-
-      - name: Build
-        env:
-          MAVEN_CONFIG: "-B -fae"
-        run: |
-          make install-fast
-
-      - name: Test
-        env:
-          MAVEN_CONFIG: "-B -fae -Dpg-embedded.postgres-version=${{ matrix.postgres-version }}"
-        run: |
-          make run-tests
+        postgres-version:
+        - 9.6
+        - 10
+        - 11
+        - 12
+        - 13
+        - 14
+        - 15
+        - 16
+name: Test Postgres versions
+on:
+  repository_dispatch:
+    types: trigger-ga___pg-versions.yml

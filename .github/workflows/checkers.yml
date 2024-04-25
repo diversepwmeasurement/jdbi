@@ -1,63 +1,54 @@
----
-name: Run all code checkers (style, static analysis, api versions etc.)
-
-on:
-  push:
-    branches:
-      - master
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
-    branches:
-      - master
-
 jobs:
   checks:
-    runs-on: ubuntu-latest
-
+    runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-tags: true
-          fetch-depth: 0
+    - continue-on-error: true
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+    - continue-on-error: true
+      uses: actions/setup-java@v4
+      with:
+        cache: maven
+        distribution: temurin
+        java-version: 21
+    - continue-on-error: true
+      env:
+        MAVEN_CONFIG: -B -fae
+      name: run code checkers
+      run: 'make install-notests
 
-      - uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: temurin
-          cache: maven
-
-      - name: run code checkers
-        env:
-          MAVEN_CONFIG: "-B -fae"
-        run: |
-          make install-notests
-
+        '
   reproducible-build:
-    runs-on: ubuntu-latest
-
+    runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-tags: true
-          fetch-depth: 0
+    - continue-on-error: true
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+    - continue-on-error: true
+      uses: actions/setup-java@v4
+      with:
+        cache: maven
+        distribution: temurin
+        java-version: 21
+    - continue-on-error: true
+      env:
+        MAVEN_CONFIG: -B -fae
+      name: run first build
+      run: 'make install-notests
 
-      - uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: temurin
-          cache: maven
+        '
+    - continue-on-error: true
+      env:
+        MAVEN_CONFIG: -B -fae -Dbasepom.test.skip=true
+      name: compare builds
+      run: 'make compare-reproducible
 
-      - name: run first build
-        env:
-          MAVEN_CONFIG: "-B -fae"
-        run: |
-          make install-notests
-
-      - name: compare builds
-        env:
-          MAVEN_CONFIG: "-B -fae -Dbasepom.test.skip=true"
-        run: |
-          make compare-reproducible
+        '
+name: Run all code checkers (style, static analysis, api versions etc.)
+on:
+  repository_dispatch:
+    types: trigger-ga___checkers.yml

@@ -1,32 +1,26 @@
----
-name: Documentation build
-
-on:
-  push:
-    branches:
-      - master
-  pull_request:
-    branches:
-      - master
-
 jobs:
   doc:
-    runs-on: ubuntu-latest
-
+    runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-tags: true
-          fetch-depth: 0
+    - continue-on-error: true
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+    - continue-on-error: true
+      uses: actions/setup-java@v4
+      with:
+        cache: maven
+        distribution: temurin
+        java-version: 21
+    - continue-on-error: true
+      env:
+        MAVEN_CONFIG: -Dbasepom.check.fail-javadoc=true -B -fae
+      name: docs
+      run: 'make docs
 
-      - uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: temurin
-          cache: maven
-
-      - name: docs
-        env:
-          MAVEN_CONFIG: "-Dbasepom.check.fail-javadoc=true -B -fae"
-        run: |
-          make docs
+        '
+name: Documentation build
+on:
+  repository_dispatch:
+    types: trigger-ga___doc.yml

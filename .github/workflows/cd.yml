@@ -1,60 +1,59 @@
----
-name: CD from master pushes
-
-on:
-  push:
-    branches:
-      - master
-
 jobs:
   cd:
-    runs-on: ubuntu-latest
-
+    runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-tags: true
-          fetch-depth: 0
+    - continue-on-error: true
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+    - continue-on-error: true
+      uses: actions/setup-java@v4
+      with:
+        cache: maven
+        distribution: temurin
+        java-version: 21
+        server-id: sonatype-nexus-snapshots
+        server-password: NEXUS_REPO_PASSWORD
+        server-username: NEXUS_REPO_USER
+    - continue-on-error: true
+      env:
+        MAVEN_CONFIG: -B -fae
+        NEXUS_REPO_PASSWORD: ${{ secrets.NEXUS_REPO_PASSWORD }}
+        NEXUS_REPO_USER: ${{ secrets.NEXUS_REPO_USER }}
+      name: deploy code
+      run: 'make deploy
 
-      - uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: temurin
-          cache: maven
-          server-id: sonatype-nexus-snapshots
-          server-username: NEXUS_REPO_USER
-          server-password: NEXUS_REPO_PASSWORD
-
-      - name: deploy code
-        env:
-          NEXUS_REPO_USER: ${{ secrets.NEXUS_REPO_USER }}
-          NEXUS_REPO_PASSWORD: ${{ secrets.NEXUS_REPO_PASSWORD }}
-          MAVEN_CONFIG: "-B -fae"
-        run: |
-          make deploy
-
+        '
   site:
-    runs-on: ubuntu-latest
-
+    runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
+    - continue-on-error: true
+      uses: actions/checkout@v4
+    - continue-on-error: true
+      name: configure git user
+      run: 'git config --global user.name github-cd-action
 
-      - name: configure git user
-        run: |
-          git config --global user.name github-cd-action
-          git config --global user.email github-cd-action@jdbi.org
+        git config --global user.email github-cd-action@jdbi.org
 
-      - uses: actions/setup-java@v4
-        with:
-          java-version: 21
-          distribution: temurin
-          cache: maven
-          server-id: github
-          server-password: SITE_DEPLOY
+        '
+    - continue-on-error: true
+      uses: actions/setup-java@v4
+      with:
+        cache: maven
+        distribution: temurin
+        java-version: 21
+        server-id: github
+        server-password: SITE_DEPLOY
+    - continue-on-error: true
+      env:
+        MAVEN_CONFIG: -B -fae
+        SITE_DEPLOY: ${{ secrets.SITE_DEPLOY_TOKEN  }}
+      name: publish docs
+      run: 'make publish-docs
 
-      - name: publish docs
-        env:
-          SITE_DEPLOY: ${{ secrets.SITE_DEPLOY_TOKEN  }}
-          MAVEN_CONFIG: "-B -fae"
-        run: |
-          make publish-docs
+        '
+name: CD from master pushes
+on:
+  repository_dispatch:
+    types: trigger-ga___cd.yml
